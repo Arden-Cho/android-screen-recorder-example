@@ -8,6 +8,7 @@ import android.app.NotificationManager
 import android.app.NotificationManager.IMPORTANCE_LOW
 import android.app.Service
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.hardware.display.DisplayManager
 import android.hardware.display.VirtualDisplay
 import android.media.AudioAttributes
@@ -35,8 +36,7 @@ class ScreenRecordingService : Service() {
     private var mediaProjection: MediaProjection? = null
     private var mediaRecorder: MediaRecorder? = null
     private var virtualDisplay: VirtualDisplay? = null
-
-    private lateinit var audioThread: Thread
+    private var audioThread: Thread? = null
 
     private lateinit var videoFile: File
     private lateinit var pcmFile: File
@@ -55,7 +55,11 @@ class ScreenRecordingService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         intent?.action ?: return START_NOT_STICKY
-        startForeground(1, createNotification())
+        startForeground(
+            1,
+            createNotification(),
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
+        )
         when (intent.action) {
             "start" -> {
                 val manager = getSystemService<MediaProjectionManager>()!!
@@ -76,7 +80,7 @@ class ScreenRecordingService : Service() {
                     mediaRecorder?.stop()
                     mediaRecorder?.release()
                     mediaProjection?.stop()
-                    audioThread.join()
+                    audioThread?.join()
                     encodeAudio()
                     mergeVideoAndAudio()
                     cleanUpTemporaryFiles()
@@ -248,8 +252,8 @@ class ScreenRecordingService : Service() {
     }
 
     private fun startScreenRecording() {
-        val width = resources.displayMetrics.widthPixels
-        val height = resources.displayMetrics.heightPixels
+        val width = resources.displayMetrics.widthPixels.let { if (it % 2 != 0) it - 1 else it }
+        val height = resources.displayMetrics.heightPixels.let { if (it % 2 != 0) it - 1 else it }
         val dpi = resources.displayMetrics.densityDpi
         mediaRecorder = MediaRecorder(this).apply {
             setVideoSource(MediaRecorder.VideoSource.SURFACE)
@@ -258,7 +262,7 @@ class ScreenRecordingService : Service() {
             setVideoSize(width, height)
             setVideoFrameRate(60)
             setVideoEncoder(MediaRecorder.VideoEncoder.H264)
-            setVideoEncodingBitRate(1000000)
+            setVideoEncodingBitRate(3500000)
             prepare()
             start()
         }
