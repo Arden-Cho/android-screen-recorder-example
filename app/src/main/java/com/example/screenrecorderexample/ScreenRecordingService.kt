@@ -89,12 +89,12 @@ class ScreenRecordingService : Service() {
                 }
             }
         }
-        return super.onStartCommand(intent, flags, startId)
+        return START_NOT_STICKY
     }
 
     @SuppressLint("MissingPermission")
     fun startAudioRecording() {
-        val minBufferSize = AudioRecord.getMinBufferSize(
+        val bufferSize = AudioRecord.getMinBufferSize(
             sampleRate,
             AudioFormat.CHANNEL_IN_STEREO,
             AudioFormat.ENCODING_PCM_16BIT
@@ -111,12 +111,12 @@ class ScreenRecordingService : Service() {
         val audioRecord = AudioRecord.Builder()
             .setAudioPlaybackCaptureConfig(config)
             .setAudioFormat(format)
-            .setBufferSizeInBytes(maxOf(minBufferSize, 1024))
+            .setBufferSizeInBytes(bufferSize)
             .build()
         audioRecord.startRecording()
         ScreenRecordingHelper.state = RecordingStates.RECORDING
         audioThread = thread {
-            val buffer = ByteArray(1024)
+            val buffer = ByteArray(bufferSize)
             pcmFile.outputStream().use {
                 while (ScreenRecordingHelper.state == RecordingStates.RECORDING) {
                     val read = audioRecord.read(buffer, 0, buffer.size)
