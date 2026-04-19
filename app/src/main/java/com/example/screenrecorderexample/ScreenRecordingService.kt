@@ -47,9 +47,9 @@ class ScreenRecordingService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        videoFile = File(filesDir, "video.mp4")
-        pcmFile = File(filesDir, "audio.pcm")
-        m4aFile = File(filesDir, "audio.m4a")
+        videoFile = File(cacheDir, "video.mp4")
+        pcmFile = File(cacheDir, "audio.pcm")
+        m4aFile = File(cacheDir, "audio.m4a")
         outputFile = File(filesDir, "output.mp4")
     }
 
@@ -90,6 +90,11 @@ class ScreenRecordingService : Service() {
 
     @SuppressLint("MissingPermission")
     fun startAudioRecording() {
+        val minBufferSize = AudioRecord.getMinBufferSize(
+            sampleRate,
+            AudioFormat.CHANNEL_IN_STEREO,
+            AudioFormat.ENCODING_PCM_16BIT
+        )
         val config = AudioPlaybackCaptureConfiguration.Builder(mediaProjection!!)
             .addMatchingUsage(AudioAttributes.USAGE_MEDIA)
             .addMatchingUsage(AudioAttributes.USAGE_UNKNOWN)
@@ -102,6 +107,7 @@ class ScreenRecordingService : Service() {
         val audioRecord = AudioRecord.Builder()
             .setAudioPlaybackCaptureConfig(config)
             .setAudioFormat(format)
+            .setBufferSizeInBytes(maxOf(minBufferSize, 1024))
             .build()
         audioRecord.startRecording()
         ScreenRecordingHelper.state = RecordingStates.RECORDING
@@ -110,7 +116,7 @@ class ScreenRecordingService : Service() {
             pcmFile.outputStream().use {
                 while (ScreenRecordingHelper.state == RecordingStates.RECORDING) {
                     val read = audioRecord.read(buffer, 0, buffer.size)
-                    if (read > 0) it.write(buffer)
+                    if (read > 0) it.write(buffer, 0, read)
                 }
             }
             audioRecord.stop()
@@ -221,11 +227,14 @@ class ScreenRecordingService : Service() {
                         break
                     } else if (outputIndex >= 0) {
                         val encodedData = codec.getOutputBuffer(outputIndex)!!
+                        if (bufferInfo.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG != 0) {
+                            bufferInfo.size = 0
+                        }
                         if (bufferInfo.size > 0) {
                             encodedData.position(bufferInfo.offset)
                             encodedData.limit(bufferInfo.offset + bufferInfo.size)
+                            mediaMuxer.writeSampleData(trackIndex, encodedData, bufferInfo)
                         }
-                        mediaMuxer.writeSampleData(trackIndex, encodedData, bufferInfo)
                         codec.releaseOutputBuffer(outputIndex, false)
                     }
                     if (bufferInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) break@out

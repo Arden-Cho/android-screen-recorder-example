@@ -19,7 +19,7 @@
         <service
             android:name=".ScreenRecordingService"
             android:enabled="true"
-            android:exported="true"
+            android:exported="false"
             android:foregroundServiceType="microphone|mediaProjection" />
 
         <activity
