@@ -277,7 +277,8 @@ class ScreenRecordingService : Service() {
         manager.createNotificationChannel(NotificationChannel(id, id, IMPORTANCE_LOW))
         return Notification.Builder(this, id)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentTitle("Hello!")
+            .setContentTitle("Recording...")
+            .setContentText("The screen is being recorded.")
             .build()
     }
 

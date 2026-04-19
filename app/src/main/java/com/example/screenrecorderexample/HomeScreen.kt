@@ -33,9 +33,9 @@ fun HomeScreen() {
         }
     }
     val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) {
-        if (it) {
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { result ->
+        if (result.values.all { it }) {
             screenCaptureLauncher.launch(ScreenRecordingHelper.getScreenCaptureIntent(context))
         } else {
             Toast.makeText(context, "Permission Denied.", Toast.LENGTH_SHORT).show()
@@ -52,7 +52,12 @@ fun HomeScreen() {
         ) {
             Button({
                 if (ScreenRecordingHelper.state == IDLE) {
-                    permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                    permissionLauncher.launch(
+                        arrayOf(
+                            Manifest.permission.RECORD_AUDIO,
+                            Manifest.permission.POST_NOTIFICATIONS
+                        )
+                    )
                 } else if (ScreenRecordingHelper.state == RECORDING) {
                     ScreenRecordingHelper.stopRecording(context)
                 }
